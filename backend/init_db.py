@@ -8,6 +8,10 @@ cursor.execute("""CREATE TABLE IF NOT EXISTS users(
     user_id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
     password TEXT 
+    age INTEGER,
+    gender TEXT,
+    occupation TEXT,
+    preferred_language TEXT
 )
 """)
 
