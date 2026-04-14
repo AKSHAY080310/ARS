@@ -1,5 +1,5 @@
 import sqlite3
-from backend.db import get_connection,get_path
+from db import get_connection,get_path
 
 conn=get_connection()
 cursor=conn.cursor()
@@ -16,14 +16,19 @@ cursor.execute("""CREATE TABLE IF NOT EXISTS users(
 """)
 
 cursor.execute("""CREATE TABLE IF NOT EXISTS movies(
-    movie_id INTEGER,
+    movie_id INTEGER PRIMARY KEY,
     title TEXT NOT NULL,
-    year INTEGER,
-    genre TEXT,
+    language TEXT,
+    genres TEXT,
+    popularity REAL,
+    vote_average REAL,
+    vote_count INTEGER,
     overview TEXT,
-    keywords TEXT,
     cast_names TEXT,
-    director TEXT
+    director TEXT,
+    keywords TEXT,
+    year INTEGER,
+    combined_features TEXT
 )
 """)
 
