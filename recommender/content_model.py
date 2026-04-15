@@ -5,6 +5,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from collections import Counter
 from backend.interactions import get_interacted_movie_ids
 tmdb_df=pd.read_pickle(os.path.join("data","processed","tmdb_for_content.pkl"))
+tmdb_df=tmdb_df.rename(columns={"tmdb_id":"movie_id"})
 vectorizer = TfidfVectorizer(stop_words="english")
 tfidf_matrix = vectorizer.fit_transform(tmdb_df["combined_features"])
 similarity=cosine_similarity(tfidf_matrix)
@@ -29,7 +30,7 @@ def recommend_by_user_history(user_id,n=10):
         return "no interactions found"
     all_recommendations = []
     for movie_id in user_movies:
-        movie_match = tmdb_df[tmdb_df["tmdb_id"] == movie_id]
+        movie_match = tmdb_df[tmdb_df["movie_id"] == movie_id]
         if movie_match.empty:
             continue
         idx = movie_match.index[0]
@@ -44,10 +45,10 @@ def recommend_by_user_history(user_id,n=10):
     recommend_indices = [
         movie_index
         for movie_index, _ in movie_counts.most_common()
-        if tmdb_df.iloc[movie_index]["tmdb_id"] not in user_movies]
+        if tmdb_df.iloc[movie_index]["movie_id"] not in user_movies]
     final_indices = recommend_indices[:n]
     return tmdb_df.iloc[final_indices][
-        ["tmdb_id","title","genres"]
+        ["movie_id","title","genres"]
     ]        
         
     
