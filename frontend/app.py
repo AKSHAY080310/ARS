@@ -1,67 +1,213 @@
 import streamlit as st
-print("Starting Streamlit app...")
-
 import sys
 import os
 
 sys.path.append(os.path.abspath("."))
+
 from backend.auth import add_user, login_user
-from backend.ratings import add_rating
-from backend.utils import search_movies
-from backend.recommend import recommend_movies
+from backend.interactions import count_user_interactions, log_interaction
+from backend.movie_search import search_movies
 
-st.title("Movie Recommendation System")
+from recommender.cold_start import cold_start_recommend
+from recommender.content_model import recommend_by_user_history
+from recommender.hybrid_model import hybrid_recommend
 
-if "user_id" not in st.session_state:
-    st.session_state.user_id = None
-st.sidebar.header("Login / Signup")
 
-username = st.sidebar.text_input("Username")
-password = st.sidebar.text_input("Password", type="password")
+st.set_page_config(page_title="Advanced Movie Recommendation System")
 
-if st.sidebar.button("Signup"):
-    st.sidebar.success(add_user(username, password))
 
-if st.sidebar.button("Login"):
-    user_id = login_user(username, password)
-    if user_id:
-        st.session_state.user_id = user_id
-        st.sidebar.success("Logged in!")
-    else:
-        st.sidebar.error("Invalid credentials")
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
 
-if st.session_state.user_id:
 
-    st.subheader("Search Movie")
+st.title("Advanced Movie Recommendation System")
 
-    query = st.text_input("Enter movie name")
 
-    if query:
-        results = search_movies(query)
+if not st.session_state.logged_in:
 
-        if results:
-            movie_options = {
-                f"{title} ({year})": movie_id
-                for movie_id, title, year in results
-            }
+    menu = st.sidebar.selectbox(
+        "Choose Option",
+        ["Login", "Signup"]
+    )
 
-            selected_movie = st.selectbox(
-                "Select Movie", list(movie_options.keys())
+    if menu == "Signup":
+
+        st.subheader("Create Account")
+
+        username = st.text_input("Username")
+
+        password = st.text_input(
+            "Password",
+            type="password"
+        )
+
+        age = st.number_input(
+            "Age",
+            min_value=1,
+            max_value=100
+        )
+
+        gender = st.selectbox(
+            "Gender",
+            ["male", "female"]
+        )
+
+        occupation = st.text_input(
+            "Occupation"
+        )
+
+        preferred_language = st.selectbox(
+            "Preferred Language",
+            ["te", "hi", "ta", "ml", "kn", "en"]
+        )
+
+        if st.button("Signup"):
+
+            result = add_user(
+                username,
+                password,
+                age,
+                gender,
+                occupation,
+                preferred_language
             )
 
-            rating = st.slider("Rate this movie", 1, 5)
+            st.success(result)
 
-            if st.button("Submit Rating"):
-                movie_id = movie_options[selected_movie]
-                st.success(add_rating(st.session_state.user_id, movie_id, rating))
+    elif menu == "Login":
 
-    st.subheader("Recommended Movies")
+        st.subheader("Login")
 
-    if st.button("Get Recommendations"):
-        recs = recommend_movies(st.session_state.user_id)
+        username = st.text_input("Enter Username")
 
-        for movie, score in recs.items():
-            st.write(f"{movie} {round(score, 2)}")
+        password = st.text_input(
+            "Enter Password",
+            type="password"
+        )
+
+        if st.button("Login"):
+
+            user = login_user(
+                username,
+                password
+            )
+
+            if user:
+
+                st.session_state.logged_in = True
+
+                st.session_state.user_id = user["user_id"]
+
+                st.session_state.age = user["age"]
+
+                st.session_state.gender = user["gender"]
+
+                st.session_state.occupation = user["occupation"]
+
+                st.session_state.preferred_language = user["preferred_language"]
+
+                st.rerun()
+
+            else:
+
+                st.error("Invalid Credentials")
+
 
 else:
-    st.info("Please login to continue")
+
+    st.success("Login Successful")
+
+    st.subheader("Recommended For You")
+
+    user_id = st.session_state.user_id
+
+    interaction_count = count_user_interactions(
+        user_id
+    )
+
+    if interaction_count == 0:
+
+        recommendations = cold_start_recommend(
+            age=st.session_state.age,
+            gender=st.session_state.gender,
+            occupation=st.session_state.occupation,
+            language=st.session_state.preferred_language
+        )
+
+    elif interaction_count < 5:
+
+        recommendations = recommend_by_user_history(
+            user_id
+        )
+
+    else:
+
+        recommendations = hybrid_recommend(
+            user_id
+        )
+
+    for index, row in recommendations.iterrows():
+
+        st.write(row["title"])
+
+    st.subheader("Search Movies")
+
+    search_query = st.text_input(
+        "Enter Movie Name"
+    )
+
+    if search_query:
+
+        search_results = search_movies(
+            search_query
+        )
+
+        for movie in search_results:
+
+            movie_id = movie[0]
+
+            movie_title = movie[1]
+
+            st.write(movie_title)
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+
+                if st.button(
+                    f"View {movie_title}",
+                    key=f"view_{movie_id}"
+                ):
+
+                    log_interaction(
+                        user_id,
+                        movie_id,
+                        "click"
+                    )
+
+                    st.success(
+                        f"Viewed {movie_title}"
+                    )
+
+            with col2:
+
+                if st.button(
+                    f"Add Watchlist {movie_title}",
+                    key=f"watch_{movie_id}"
+                ):
+
+                    log_interaction(
+                        user_id,
+                        movie_id,
+                        "watchlist"
+                    )
+
+                    st.success(
+                        f"Added {movie_title} to Watchlist"
+                    )
+
+    if st.button("Logout"):
+
+        st.session_state.logged_in = False
+
+        st.rerun()

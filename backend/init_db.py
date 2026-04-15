@@ -1,5 +1,5 @@
 import sqlite3
-from db import get_connection,get_path
+from backend.db import get_connection,get_path
 
 conn=get_connection()
 cursor=conn.cursor()
@@ -7,7 +7,7 @@ cursor=conn.cursor()
 cursor.execute("""CREATE TABLE IF NOT EXISTS users(
     user_id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
-    password TEXT 
+    password TEXT,
     age INTEGER,
     gender TEXT,
     occupation TEXT,
